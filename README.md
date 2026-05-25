@@ -82,6 +82,9 @@ language_activity   ← event patterns by hour of day
 pipeline_summary    ← hourly overview
 20 data quality tests across all layers (not_null, unique).
 
+### dbt Lineage Graph
+![dbt Lineage Graph](docs/lineage_graph.png)
+
 ---
 
 ## Dashboard Pages
