@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: trending_repos
+    description: "Trending GitHub repos identified by z-score anomaly detection. A z-score above 2 means the repo is receiving 2+ standard deviations more stars than its historical average."
+    columns:
+      - name: repo_name
+        description: "GitHub repository in owner/repo format"
+        tests:
+          - not_null
+          - unique
+      - name: recent_stars
+        description: "Total stars received"
+        tests:
+          - not_null
+      - name: z_score
+        description: "Standard deviations above average star rate. Above 2.0 = trending."
+
+  - name: language_activity
+    description: "Event count by type and hour of day. Shows GitHub activity patterns throughout the day."
+    columns:
+      - name: event_type
+        description: "GitHub event type: PushEvent, WatchEvent, ForkEvent etc"
+        tests:
+          - not_null
+      - name: event_hour
+        description: "Hour of day (0-23 UTC)"
+        tests:
+          - not_null
+
+  - name: pipeline_summary
+    description: "High level summary per hour showing total stars, pushes and events across all repos."
+    columns:
+      - name: hour
+        description: "UTC hour"
+        tests:
+          - not_null
+          - unique

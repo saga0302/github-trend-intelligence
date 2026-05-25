@@ -1,0 +1,73 @@
+version: 2
+
+sources:
+  - name: github_raw
+    database: github_analytics
+    schema: RAW
+    tables:
+      - name: star_counts
+        description: "Raw star counts per repo per hour from GitHub Archive"
+        columns:
+          - name: repo_name
+            description: "GitHub repository name in owner/repo format"
+            tests:
+              - not_null
+          - name: hour
+            description: "UTC hour the stars were counted"
+            tests:
+              - not_null
+          - name: star_count
+            description: "Number of WatchEvents (stars) in this hour"
+            tests:
+              - not_null
+
+      - name: push_activity
+        description: "Raw push counts per repo per hour from GitHub Archive"
+        columns:
+          - name: repo_name
+            tests:
+              - not_null
+          - name: hour
+            tests:
+              - not_null
+          - name: push_count
+            tests:
+              - not_null
+
+      - name: event_summary
+        description: "Raw event type counts per hour from GitHub Archive"
+        columns:
+          - name: event_type
+            tests:
+              - not_null
+          - name: hour
+            tests:
+              - not_null
+          - name: event_count
+            tests:
+              - not_null
+
+models:
+  - name: stg_star_counts
+    description: "Cleaned star counts with date and hour extracted"
+    columns:
+      - name: repo_name
+        tests:
+          - not_null
+      - name: star_count
+        tests:
+          - not_null
+
+  - name: stg_push_activity
+    description: "Cleaned push activity with date and hour extracted"
+    columns:
+      - name: repo_name
+        tests:
+          - not_null
+
+  - name: stg_event_summary
+    description: "Cleaned event summary with date and hour extracted"
+    columns:
+      - name: event_type
+        tests:
+          - not_null
