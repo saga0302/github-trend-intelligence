@@ -1,0 +1,8 @@
+# Secrets — never commit these
+dashboard/.streamlit/secrets.toml
+dbt_project/profiles.yml
+**/*.json
+logs/
+**/__pycache__/
+**/*.pyc
+.env
