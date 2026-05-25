@@ -1,6 +1,6 @@
 # GitHub Trend Intelligence Pipeline
 
-> An end-to-end batch data pipeline that identifies viral GitHub repositories before they appear on GitHub Trending — using a full medallion architecture with automated orchestration, transformation, and a live dashboard.
+> An end-to-end batch data pipeline that identifies viral GitHub repositories before they appear on GitHub Trending using a full medallion architecture with automated orchestration, transformation, and a live dashboard.
 
 🔴 **[Live Dashboard](https://app-trend-intelligence-4jxujvylb87awhqbzjebkz.streamlit.app/)**
 
