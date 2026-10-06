@@ -1,0 +1,1 @@
+select * from read_parquet('../data/gold_push_activity.parquet')

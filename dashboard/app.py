@@ -17,10 +17,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# ── Data directory ────────────────────────────
-DATA_DIR = "data"  # Local parquet files stored here
+# ── Data directory ────────────────────────
+DATA_DIR = "data"
 
-# ── DuckDB connection ─────────────────────────
+# ── DuckDB connection ─────────────────────
 @st.cache_resource
 def get_duckdb_conn():
     """Create a DuckDB connection."""
@@ -45,7 +45,7 @@ def load_data(table_name):
         st.error(f"Error loading {table_name}: {e}")
         return pd.DataFrame()
 
-# ── Sidebar ───────────────────────────────────
+# ── Sidebar ───────────────────────────────
 st.sidebar.title("GitHub Trend Intelligence")
 st.sidebar.markdown("Real-time GitHub activity analytics powered by a full medallion architecture pipeline.")
 st.sidebar.markdown("---")
@@ -63,37 +63,38 @@ if page == "🔥 Trending Repos":
     st.title("🔥 Trending GitHub Repositories")
     st.markdown("Repositories with unusual star velocity detected by z-score anomaly detection.")
 
-    df = load_data("trending_repos")
+    df = load_data("gold_star_counts")
 
     if df.empty:
         st.warning("No trending repos found. Run the pipeline to load data.")
     else:
-        # Normalize column names (Parquet might have case variations)
-        df.columns = df.columns.str.lower()
+        # Real columns: repo_name, hour, star_count
+        # Aggregate by repo to get total stars
+        repo_stars = df.groupby('repo_name')['star_count'].sum().reset_index()
+        repo_stars = repo_stars.sort_values('star_count', ascending=False)
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Repos Tracked", len(df))
-        col2.metric("Top Repo Stars", int(df['recent_stars'].max()) if 'recent_stars' in df.columns else 0)
-        col3.metric("Avg Stars/Repo", round(df['recent_stars'].mean(), 1) if 'recent_stars' in df.columns else 0)
+        col1.metric("Total Repos Tracked", len(repo_stars))
+        col2.metric("Top Repo Stars", int(repo_stars['star_count'].max()) if len(repo_stars) > 0 else 0)
+        col3.metric("Avg Stars/Repo", round(repo_stars['star_count'].mean(), 1) if len(repo_stars) > 0 else 0)
 
         st.markdown("### Top Trending Repos")
         fig = px.bar(
-            df.head(15),
-            x='recent_stars',
+            repo_stars.head(15),
+            x='star_count',
             y='repo_name',
             orientation='h',
-            color='recent_stars',
+            color='star_count',
             color_continuous_scale='Blues',
-            title='Top 15 Repos by Star Count'
+            title='Top 15 Repos by Star Count',
+            labels={'star_count': 'Total Stars', 'repo_name': 'Repository'}
         )
         fig.update_layout(yaxis={'categoryorder': 'total ascending'}, height=500)
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("### Full Trending Table")
-        display_cols = ['repo_name', 'recent_stars', 'avg_hourly_stars', 'z_score', 'latest_hour']
-        display_cols = [col for col in display_cols if col in df.columns]
         st.dataframe(
-            df[display_cols],
+            repo_stars[['repo_name', 'star_count']].head(30),
             use_container_width=True
         )
 
@@ -102,14 +103,13 @@ elif page == "📊 Event Activity":
     st.title("📊 GitHub Event Activity by Hour")
     st.markdown("Shows which hours of the day are most active per event type (UTC).")
 
-    df = load_data("language_activity")
+    df = load_data("gold_event_summary")
 
     if df.empty:
         st.warning("No event data found.")
     else:
-        df.columns = df.columns.str.lower()
-
-        if 'event_type' in df.columns and 'event_hour' in df.columns:
+        # Real columns: event_type, hour, event_count
+        if 'event_type' in df.columns and 'hour' in df.columns and 'event_count' in df.columns:
             event_types = df['event_type'].unique().tolist()
             selected = st.multiselect(
                 "Select event types",
@@ -117,24 +117,28 @@ elif page == "📊 Event Activity":
                 default=event_types[:4]
             )
 
-            filtered = df[df['event_type'].isin(selected)]
+            filtered = df[df['event_type'].isin(selected)].copy()
+
+            # Extract hour of day for chart
+            filtered['hour_of_day'] = pd.to_datetime(filtered['hour']).dt.hour
+            hourly_data = filtered.groupby(['event_type', 'hour_of_day'])['event_count'].sum().reset_index()
 
             fig = px.line(
-                filtered,
-                x='event_hour',
-                y='total_events',
+                hourly_data,
+                x='hour_of_day',
+                y='event_count',
                 color='event_type',
                 title='GitHub Events by Hour of Day (UTC)',
-                labels={'event_hour': 'Hour (UTC)', 'total_events': 'Total Events'}
+                labels={'hour_of_day': 'Hour (UTC)', 'event_count': 'Total Events'}
             )
             fig.update_layout(height=450)
             st.plotly_chart(fig, use_container_width=True)
 
             st.markdown("### Heatmap")
-            pivot = filtered.pivot_table(
+            pivot = hourly_data.pivot_table(
                 index='event_type',
-                columns='event_hour',
-                values='total_events',
+                columns='hour_of_day',
+                values='event_count',
                 fill_value=0
             )
             fig2 = px.imshow(
@@ -145,40 +149,43 @@ elif page == "📊 Event Activity":
             )
             st.plotly_chart(fig2, use_container_width=True)
         else:
-            st.error("Missing required columns: event_type, event_hour")
+            st.error("Missing required columns: event_type, hour, event_count")
 
 # ── Page 3: Pipeline Summary ──────────────────
 elif page == "🔧 Pipeline Summary":
     st.title("🔧 Pipeline Summary")
     st.markdown("Hourly overview of total GitHub activity processed by the pipeline.")
 
-    df = load_data("pipeline_summary")
+    df = load_data("gold_push_activity")
 
     if df.empty:
         st.warning("No pipeline data found.")
     else:
-        df.columns = df.columns.str.lower()
+        # Real columns: repo_name, hour, push_count
+        if 'hour' in df.columns and 'push_count' in df.columns:
+            # Aggregate by hour
+            hourly = df.groupby('hour')['push_count'].sum().reset_index()
+            hourly = hourly.sort_values('hour', ascending=False).head(48)
 
-        if 'hour' in df.columns:
             col1, col2, col3 = st.columns(3)
-            col1.metric("Total Hours Processed", len(df))
-            col2.metric("Total Stars", f"{int(df['total_stars'].sum()):,}" if 'total_stars' in df.columns else 0)
-            col3.metric("Total Events", f"{int(df['total_events'].sum()):,}" if 'total_events' in df.columns else 0)
+            col1.metric("Total Hours Processed", len(hourly))
+            col2.metric("Total Pushes", f"{int(hourly['push_count'].sum()):,}")
+            col3.metric("Avg Pushes/Hour", round(hourly['push_count'].mean(), 1) if len(hourly) > 0 else 0)
 
             fig = px.line(
-                df.sort_values('hour'),
+                hourly.sort_values('hour'),
                 x='hour',
-                y=['total_stars', 'total_pushes'] if 'total_pushes' in df.columns else ['total_stars'],
-                title='Stars and Pushes Over Time',
-                labels={'value': 'Count', 'hour': 'Hour (UTC)'}
+                y='push_count',
+                title='Push Events Over Time',
+                labels={'push_count': 'Push Count', 'hour': 'Hour (UTC)'}
             )
             fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
 
             st.markdown("### Raw Data")
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(hourly, use_container_width=True)
         else:
-            st.error("Missing required columns for pipeline summary")
+            st.error("Missing required columns: hour, push_count")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"Last refreshed: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
