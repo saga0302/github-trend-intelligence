@@ -6,3 +6,16 @@ logs/
 **/__pycache__/
 **/*.pyc
 .env
+# DuckDB
+*.duckdb
+dbt_project/*.duckdb
+
+# Local testing
+local_test/
+test_*.py
+*_test.py
+
+# dbt artifacts
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
