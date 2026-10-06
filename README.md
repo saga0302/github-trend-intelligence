@@ -379,7 +379,7 @@ z_score = (current_hour_stars - historical_average) / standard_deviation
 Sagarika Raju  
 MS Analytics, University of Southern California, 2026
 
-Email: rajus@usc.edu  
+ 
 LinkedIn: linkedin.com/in/sagarika-raju-ab28051a5  
 GitHub: github.com/saga0302
 
